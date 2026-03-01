@@ -27,26 +27,44 @@ from plotting import (
 )
 
 
-def main():
-    parser = argparse.ArgumentParser(description="EA ML pipeline (OOF CV, plots, Youden, optional SHAP).")
-    parser.add_argument("--data_path", required=True, help="Path to local dataset file (.xlsx). Not included in repo.")
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description="EA ML pipeline (Stratified Group 5-fold OOF CV, plots, Youden, optional SHAP)."
+    )
+    parser.add_argument(
+        "--data_path",
+        required=True,
+        help="Path to local dataset file (.xlsx). Not included in repo.",
+    )
     parser.add_argument("--outdir", default="results", help="Output directory")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--n_splits", type=int, default=5)
 
-    parser.add_argument("--outcome_col", default="EA", help="Binary outcome column (0/1).")
-    parser.add_argument("--patient_id_col", default="patient_id", help="Patient identifier column name.")
+    # These should match the manuscript definitions
+    parser.add_argument(
+        "--outcome_col",
+        default="EA",
+        help="Binary outcome column name (0/1) consistent with the manuscript EA definition.",
+    )
+    parser.add_argument(
+        "--patient_id_col",
+        default="patient_id",
+        help="Patient identifier column name (used for group CV).",
+    )
+    parser.add_argument(
+        "--do_shap",
+        action="store_true",
+        help="If set, generate a SHAP summary plot for the best-performing model (if supported).",
+    )
 
-    parser.add_argument("--do_shap", action="store_true", help="If set, generate SHAP summary plot for best model (if possible).")
     args = parser.parse_args()
-
     set_global_seed(args.seed)
     outdir = ensure_outdir(args.outdir)
 
     # Load
     df = pd.read_excel(args.data_path)
 
-    # Build X/y/groups
+    # Build X/y/groups based on the manuscript feature specification
     spec = default_feature_spec()
     X, y, groups, used_features, used_cat_cols = build_X_y_groups(
         df=df,
@@ -55,11 +73,11 @@ def main():
         feature_spec=spec,
     )
 
-    # Preprocess + models
+    # Shared preprocessing + models
     preprocess = build_preprocessor(X, cat_cols=used_cat_cols, drop_first=True)
     models = build_models(preprocess, seed=args.seed)
 
-    # Evaluate
+    # OOF evaluation
     perf_df, oof_store, fold_store = evaluate_all_models(
         models=models,
         X=X,
@@ -74,7 +92,11 @@ def main():
     perf_df.to_csv(perf_path, index=False, encoding="utf-8-sig")
 
     for name, fold_df in fold_store.items():
-        fold_df.to_csv(os.path.join(outdir, f"FoldScores_{name}.csv"), index=False, encoding="utf-8-sig")
+        fold_df.to_csv(
+            os.path.join(outdir, f"FoldScores_{name}.csv"),
+            index=False,
+            encoding="utf-8-sig",
+        )
 
     # Plots + Youden
     roc_path = plot_roc_curves(y, oof_store, outdir)
@@ -89,13 +111,21 @@ def main():
 
     shap_path = None
     if args.do_shap:
-        shap_path = try_shap_summary_plot(best_model_fitted, X, outdir=outdir, max_display=20, sample_size=1000, seed=args.seed)
+        shap_path = try_shap_summary_plot(
+            fitted_pipeline=best_model_fitted,
+            X=X,
+            outdir=outdir,
+            max_display=20,
+            sample_size=1000,
+            seed=args.seed,
+        )
 
     # Console summary
     print("\n=== Pipeline summary ===")
     print("Outcome:", args.outcome_col)
     print("Used features:", used_features)
     print("Used categorical columns:", used_cat_cols)
+
     print("\nSaved:")
     print(" -", perf_path)
     print(" -", os.path.join(outdir, "Table_Youden_metrics_all_models.csv"))
@@ -104,6 +134,7 @@ def main():
     print(" -", cal_path)
     if shap_path:
         print(" -", shap_path)
+
     print("\nBest model (by AUROC OOF):", best_name)
     print("\nPerformance table:")
     print(perf_df.to_string(index=False))

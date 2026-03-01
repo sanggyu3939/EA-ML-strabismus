@@ -25,4 +25,58 @@ You may override the outcome column name via `--outcome_col`.
 
 Install:
 ```bash
-pip install -r requirements.txt
+`pip install -r requirements.txt`
+
+## Expected input format
+
+The pipeline reads an Excel file (.xlsx) that includes:
+
+a patient identifier column (default: patient_id)
+
+the outcome column (default: EA)
+
+predictor columns used in the manuscript (see preprocessing.py → default_feature_spec())
+
+If a candidate predictor column is not present in the dataset, it is automatically skipped.
+
+## How to run
+
+Example:
+
+python ea_ml_pipeline.py \
+  --data_path /path/to/your_local_data.xlsx \
+  --outdir results \
+  --outcome_col EA \
+  --patient_id_col patient_id \
+  --n_splits 5 \
+  --seed 42
+
+(Optional) Generate a SHAP summary plot for the best-performing model (if supported):
+
+python ea_ml_pipeline.py --data_path /path/to/your_local_data.xlsx --do_shap
+
+## Outputs
+
+Saved to --outdir (default: results/):
+
+Table_OOF_performance.csv (AUROC/AUPRC/Brier; mean±SD across folds and pooled OOF estimates)
+
+FoldScores_<MODEL>.csv (per-fold metrics)
+
+Table_Youden_metrics_all_models.csv (Youden threshold and confusion-matrix–based metrics)
+
+Figure_ROC_OOF_all_models.png
+
+Figure_PR_OOF_all_models.png
+
+Figure_Calibration_OOF_all_models.png
+
+Figure_SHAP_summary.png (optional)
+
+## Notes
+
+This repository is provided for research reproducibility and transparency and is not intended for clinical deployment.
+
+## Citation
+
+If you use this code, please cite the associated manuscript (to be added after publication).

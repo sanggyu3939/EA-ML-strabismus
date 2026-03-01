@@ -1,3 +1,6 @@
+![GitHub Workflow Status](https://github.com/sanggyu3939/EA-ML-strabismus/actions/workflows/python-app.yml/badge.svg)
+
+
 # Machine Learning–Based Prediction of Emergence Agitation After Pediatric Strabismus Surgery
 
 This repository contains the reproducible analysis pipeline for the study:
